@@ -37,11 +37,7 @@ df.head()
 # --------------------------
 print(df.info())
 print(df.describe())
-
-# Liczba braków w każdej kolumnie
 print(df.isnull().sum().sort_values(ascending=False))
-
-# Sprawdzenie liczności klas celu
 print(df['RainTomorrow'].value_counts())
 
 # --------------------------
@@ -120,19 +116,22 @@ models = {
 }
 
 # --------------------------
-# Trenowanie modeli i predykcje
+# Trenowanie modeli, predykcje i cross-validation
 # --------------------------
 results = []
+results_cv = []
 
 for name, clf in models.items():
     pipeline = Pipeline([
         ("preprocessor", preprocessor),
         ("classifier", clf)
     ])
+
+    # Fit na zbiorze treningowym
     pipeline.fit(X_train, y_train)
     y_pred = pipeline.predict(X_test)
 
-    # Ewaluacja
+    # Ewaluacja na zbiorze testowym
     acc = accuracy_score(y_test, y_pred)
     prec = precision_score(y_test, y_pred)
     rec = recall_score(y_test, y_pred)
@@ -140,7 +139,7 @@ for name, clf in models.items():
 
     results.append([name, acc, prec, rec, f1])
 
-    print(f"\n{name}")
+    print(f"\n{name} - Test set")
     print("-" * 40)
     print(classification_report(y_test, y_pred))
 
@@ -152,10 +151,21 @@ for name, clf in models.items():
     plt.ylabel("Actual")
     plt.show()
 
+    # Cross-validation (F1-score)
+    cv_scores = cross_val_score(pipeline, X, y, cv=5, scoring='f1')
+    mean_cv = cv_scores.mean()
+    std_cv = cv_scores.std()
+    results_cv.append([name, mean_cv, std_cv])
+    print(f"{name} - Cross-validated F1-score: {mean_cv:.3f} ± {std_cv:.3f}")
+
 # --------------------------
-# Porównanie modeli w tabeli
+# Porównanie modeli w tabelach
 # --------------------------
 results_df = pd.DataFrame(results, columns=["Model", "Accuracy", "Precision", "Recall", "F1-score"])
 results_df = results_df.sort_values(by="F1-score", ascending=False)
-print("\nPorównanie modeli:")
+print("\nPorównanie modeli - Test set:")
 print(results_df)
+
+results_cv_df = pd.DataFrame(results_cv, columns=["Model", "F1-score (mean)", "F1-score (std)"])
+print("\nPorównanie modeli - Walidacja krzyżowa:")
+print(results_cv_df)
